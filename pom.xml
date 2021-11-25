@@ -6,6 +6,21 @@
 <name>TesseractPdfTest</name>
 
 
+<dependencies>
+	<!-- https://mvnrepository.com/artifact/net.sourceforge.tess4j/tess4j -->
+	<dependency>
+	    <groupId>net.sourceforge.tess4j</groupId>
+	    <artifactId>tess4j</artifactId>
+	    <version>4.5.5</version>
+	</dependency>
+	<dependency>
+	    <groupId>org.slf4j</groupId>
+	    <artifactId>slf4j-nop</artifactId>
+	    <version>1.7.32</version>
+	</dependency>
+	
+
+</dependencies>
 
 <build>
 	<plugins>
@@ -42,5 +57,4 @@
 		</plugin>
 	</plugins>
 </build>
-
 </project>

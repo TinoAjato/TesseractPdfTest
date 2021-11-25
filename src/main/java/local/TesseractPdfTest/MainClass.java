@@ -1,27 +1,64 @@
 package local.TesseractPdfTest;
 
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+import java.util.UUID;
 
+import javax.imageio.ImageIO;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+
+import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 
 public class MainClass {
 	
-	public static void main(String[] args) throws TesseractException {
+	public static void main(String[] args) throws TesseractException, IOException {
 		System.out.println("TST");
 		
-		File image = new File("src/main/resources/test/ИдеальнаяКартинка." + "tif");//jpeg png tif
-//		File image = new File("D:/tst.png");
-		Tesseract tesseract = new Tesseract();
+		String absPath = "D:/Users/beliaev/Desktop/test/";
+		
+		PDDocument document = PDDocument.load(new File(absPath + "tstPdf.pdf"));
+		PDFRenderer pdfRenderer = new PDFRenderer(document);
+		
+		ITesseract tesseract = new Tesseract();
+		
 		tesseract.setDatapath("src/main/resources/tessdata");
 		tesseract.setLanguage("rus");
 		tesseract.setPageSegMode(3);
 		tesseract.setOcrEngineMode(1);
-		String result = tesseract.doOCR(image);
-//		String result = tesseract.doOCR(image, new Rectangle(795, 175, 180, 30));
 		
-		System.out.println(result);
+		for (int page = 0; page < document.getNumberOfPages(); page++) {
+			BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(page, 300, ImageType.GRAY);
+			
+			ImageIO.write(bufferedImage, "png", new File(absPath + page + "_RGB_" + ".png"));
+			
+//			try {
+//				String str = tesseract.doOCR(bufferedImage);
+//				System.out.println(str);
+//			} catch (TesseractException ex) {
+//				ex.printStackTrace();
+//			}
+		}
+		document.close();
+		
+		
+//		File image = new File("src/main/resources/test/ИдеальнаяКартинка." + "tif");//jpeg png tif
+////		File image = new File("D:/tst.png");
+//		Tesseract tesseract = new Tesseract();
+//		tesseract.setDatapath("src/main/resources/tessdata");
+//		tesseract.setLanguage("rus");
+//		tesseract.setPageSegMode(3);
+//		tesseract.setOcrEngineMode(1);
+//		String result = tesseract.doOCR(image);
+////		String result = tesseract.doOCR(image, new Rectangle(795, 175, 180, 30));
+//		System.out.println(result);
 	}
 	
 }

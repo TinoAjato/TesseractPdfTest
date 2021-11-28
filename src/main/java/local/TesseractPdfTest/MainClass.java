@@ -30,22 +30,22 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class MainClass {
 	
-	private static String absPath = "D:/Users/beliaev/Downloads/Кривые ТН/";
+	private static String absPath = "F:/Downloads/Кривые ТН/";
 	private static int[] coords;
 	private static ArrayList<int[]> coordsInStamp;
-	private static List<ImageType> imageTypes = Arrays.asList(ImageType.ARGB);//, ImageType.BINARY, ImageType.GRAY, ImageType.RGB);
+	private static List<ImageType> imageTypes = Arrays.asList(/*ImageType.ARGB, ImageType.RGB, ImageType.GRAY, */ImageType.BINARY);
 	
-	private static int[] pageSegMode = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+	private static int[] pageSegMode = new int[]{/*0, 1, 2, 3, 4, 5, */6/*, 7, 8, 9, 10, 11, 12, 13*/};
 	
 	public static void main(String[] args) {
 		long start = System.nanoTime();
 		System.out.println("TST");
 		
 //		try {
-//			FileOutputStream fos = new FileOutputStream(new File(absPath  + "output/" + "resultStat.xlsx"));
+//			FileOutputStream fos = new FileOutputStream(new File(absPath  + "output/" + "!resultStat.xlsx"));
 //			XSSFWorkbook  workbook = new XSSFWorkbook();            
-			
-//			for(int psm : pageSegMode) {
+//			
+			for(int psm : pageSegMode) {
 //				XSSFSheet sheet = workbook.createSheet(psm + " SegMode");  
 //				
 //				Row row = sheet.createRow(0);
@@ -53,15 +53,16 @@ public class MainClass {
 //				for(ImageType it : imageTypes) {
 //					Cell cell = row.createCell(indexCell++);
 //					cell.setCellValue(it + "");
+//					indexCell++;
 //				}
 				
 				try {
-					run(null, 0);
+					run(null, psm);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-//			}
-			
+			}
+//			
 //			workbook.write(fos);
 //			fos.flush();
 //			fos.close();
@@ -103,9 +104,9 @@ public class MainClass {
 		
 		
 		for (int page = 0; page < lastPage; page++) {
-			System.out.println("**** page = " + page + " ****");
+			System.out.println("**** page = " + page + " **** segMode = " + psm);
 			
-//			StringBuffer result = new StringBuffer();
+			StringBuffer result = new StringBuffer();
 			
 //			Row row = sheet.createRow(page+1);
 //			int indexCell = 0;
@@ -124,20 +125,20 @@ public class MainClass {
 					
 					//прямоугольник серии
 					coordsInStamp.add(new int[]{0, 0, 260, 110});
-	//				//прямоугольник наименования типа
-	//				coordsInStamp.add(new int[]{220, 70, 800, 160});
-	//				//прямоугольник номера штрихкода
-	//				coordsInStamp.add(new int[]{1060, 125, 510, 110});
+					//прямоугольник наименования типа
+					coordsInStamp.add(new int[]{220, 70, 800, 160});
+					//прямоугольник номера штрихкода
+					coordsInStamp.add(new int[]{1060, 125, 510, 110});
 				} else {
 					//координаты всего штампа
 					coords = new int[]{180, 265, 3150, 280};//размер 3150 на 280 пикселей
 					
 					//прямоугольник серии
-					coordsInStamp.add(new int[]{0, 0, 250, 125});
-	//				//прямоугольник наименования типа
-	//				coordsInStamp.add(new int[]{250, 60, 780, 190});
-	//				//прямоугольник номера штрихкода
-	//				coordsInStamp.add(new int[]{1030, 125, 570, 125});
+					coordsInStamp.add(new int[]{0, 0, 260, 110});
+					//прямоугольник наименования типа
+					coordsInStamp.add(new int[]{220, 70, 1820, 160});
+					//прямоугольник номера штрихкода
+					coordsInStamp.add(new int[]{2070, 160, 510, 110});
 				}
 				
 				//получаем часть изображения где идет указание серии, типа и штрих-код
@@ -145,26 +146,30 @@ public class MainClass {
 				
 				areasMarkup(partOfBufferedImage, coordsInStamp);
 				
-				String res = "";
-				
-//				try {
-//					for(int[] coordInStamp : coordsInStamp) {
-//						String text = tesseract.doOCR(partOfBufferedImage, new Rectangle(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]));
+				try {
+					for(int[] coordInStamp : coordsInStamp) {
+						String text = tesseract.doOCR(partOfBufferedImage, new Rectangle(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]));
+						
+						String res = text.replaceAll("[^\\da-zA-Zа-яёА-ЯЁ]", "").toLowerCase();
+						
+						//System.out.println(Arrays.toString(coordInStamp) + "; " + res);
+						
+						result.append(res + "; ");//result.append(it + ": " + res + "; ");
+						
+//						Cell cell = row.createCell(indexCell++);
+//						cell.setCellValue(res);
 //						
-//						res += text.replaceAll("[^\\da-zA-Zа-яёА-ЯЁ]", "");
-//	//					System.out.print(Arrays.toString(coordInStamp) + "; " + res);
-//						result.append(it + ": " + res + "; ");
-//						
-////						Cell cell = row.createCell(indexCell++);
-////						cell.setCellValue(res);
-//					}
-//				} catch (TesseractException ex) {
-//					ex.printStackTrace();
-//				}
+//						Cell cellFormula = row.createCell(indexCell);
+//						cellFormula.setCellFormula(getColumnName(indexCell-1) + (row.getRowNum()+1) + "=J" + (row.getRowNum()+1));
+//						indexCell++;
+					}
+				} catch (TesseractException ex) {
+					ex.printStackTrace();
+				}
 				
-				ImageIO.write(partOfBufferedImage, "png", new File(absPath + "output/" + page + "_" + it + "_" + res + ".png"));
+				ImageIO.write(partOfBufferedImage, "png", new File(absPath + "output/" + page + "_" + it + ".png"));
 			}
-//			System.out.println(result.toString());
+			System.out.println(result.toString());
 		}
 		document.close();
 		
@@ -186,16 +191,29 @@ public class MainClass {
 		WritableRaster raster = bi.copyData(bi.getRaster().createCompatibleWritableRaster());
 		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
 	}
+	
+	private static String getColumnName(int columnNumber) {
+		String columnName = "";
+		int dividend = columnNumber + 1;
+		int modulus;
+		while (dividend > 0){
+			modulus = (dividend - 1) % 26;
+			columnName = (char)(65 + modulus) + columnName;
+			dividend = (int)((dividend - modulus) / 26);
+		}
+		return columnName;
+	}
+	
 /*https://stackoverflow.com/questions/57160892/tesseract-error-warning-invalid-resolution-0-dpi-using-70-instead
 PageSegMode - Режимы сегментации страницы:
 	0 Только ориентация и обнаружение сценария (OSD).
-	1 Автоматическая сегментация страниц с экранным меню.
-	2 Автоматическая сегментация страниц, но без OSD или OCR. (не реализована)
-	3 Полностью автоматическая сегментация страниц, но без экранного меню. (Дефолт)
-	4 Предположим, что один столбец текста переменного размера.
+	+1 Автоматическая сегментация страниц с экранным меню.
+	+2 Автоматическая сегментация страниц, но без OSD или OCR. (не реализована)
+	+3 Полностью автоматическая сегментация страниц, но без экранного меню. (Дефолт)
+	+4 Предположим, что один столбец текста переменного размера.
 	5 Предположим, что это единый однородный блок вертикально выровненного текста.
-	6 Предположим, что это один однородный блок текста.
-	7 Рассматривайте изображение как одну текстовую строку.
+	+6 Предположим, что это один однородный блок текста.
+	+7 Рассматривайте изображение как одну текстовую строку.
 	8 Относитесь к изображению как к одному слову.
 	9 Рассматривайте изображение как отдельное слово в круге.
 	10 Относитесь к изображению как к одному символу.

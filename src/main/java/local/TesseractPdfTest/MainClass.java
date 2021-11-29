@@ -24,18 +24,20 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import net.sourceforge.tess4j.ITessAPI;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
+import net.sourceforge.tess4j.Word;
 
 public class MainClass {
 	
-	private static String absPath = "F:/Downloads/Кривые ТН/";
-	private static int[] coords;
+	private static String absPath = "D:/Users/beliaev/Downloads/Кривые ТН/";
+	private static int[] coordsStamp;
 	private static ArrayList<int[]> coordsInStamp;
-	private static List<ImageType> imageTypes = Arrays.asList(/*ImageType.ARGB, ImageType.RGB, ImageType.GRAY, */ImageType.BINARY);
+	private static List<ImageType> imageTypes = Arrays.asList(/*ImageType.ARGB, ImageType.RGB, */ImageType.GRAY/*, ImageType.BINARY*/);
 	
-	private static int[] pageSegMode = new int[]{/*0, 1, 2, 3, 4, 5, */6/*, 7, 8, 9, 10, 11, 12, 13*/};
+	private static int[] pageSegMode = new int[]{/*0, 1, 2, 3, */4/*, 5, 6, 7, 8, 9, 10, 11, 12, 13*/};
 	
 	public static void main(String[] args) {
 		long start = System.nanoTime();
@@ -99,6 +101,7 @@ public class MainClass {
 		tesseract.setPageSegMode(psm);
 		tesseract.setOcrEngineMode(2);
 		tesseract.setTessVariable("user_defined_dpi", "300");
+//		tesseract.setTessVariable("tessedit_char_whitelist", "0123456789 ");
 		
 		int lastPage = document.getNumberOfPages();
 		
@@ -106,7 +109,7 @@ public class MainClass {
 		for (int page = 0; page < lastPage; page++) {
 			System.out.println("**** page = " + page + " **** segMode = " + psm);
 			
-			StringBuffer result = new StringBuffer();
+//			StringBuffer result = new StringBuffer();
 			
 //			Row row = sheet.createRow(page+1);
 //			int indexCell = 0;
@@ -121,7 +124,10 @@ public class MainClass {
 				//если высота листа больше его ширины, то это портретная ориентация
 				if(bufferedImage.getHeight() > bufferedImage.getWidth()) {
 					//координаты всего штампа
-					coords = new int[]{180, 375, 2150, 255};//размер 2150 на 255 пикселей
+					coordsStamp = new int[]{
+							180, 375, 2150, 255,//размер 2150 на 255 пикселей
+							850, 110, 1000, 270,//размер 822 на 375 пикселей
+					};
 					
 					//прямоугольник серии
 					coordsInStamp.add(new int[]{0, 0, 260, 110});
@@ -131,7 +137,10 @@ public class MainClass {
 					coordsInStamp.add(new int[]{1060, 125, 510, 110});
 				} else {
 					//координаты всего штампа
-					coords = new int[]{180, 265, 3150, 280};//размер 3150 на 280 пикселей
+					coordsStamp = new int[]{
+							180, 265, 3150, 280,//размер 3150 на 280 пикселей
+							180, 265, 3150, 280,
+					};
 					
 					//прямоугольник серии
 					coordsInStamp.add(new int[]{0, 0, 260, 110});
@@ -141,46 +150,62 @@ public class MainClass {
 					coordsInStamp.add(new int[]{2070, 160, 510, 110});
 				}
 				
-				//получаем часть изображения где идет указание серии, типа и штрих-код
-				BufferedImage partOfBufferedImage = deepCopy(bufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
+//				//получаем часть изображения где идет указание серии, типа и штрих-код
+//				BufferedImage partOfBufferedImage1 = deepCopy(bufferedImage.getSubimage(coordsStamp[0], coordsStamp[1], coordsStamp[2], coordsStamp[3]));
+//				
+				//получаем часть изображения где идет УНП грузополучателя
+				BufferedImage partOfBufferedImage2 = deepCopy(bufferedImage.getSubimage(coordsStamp[4], coordsStamp[5], coordsStamp[6], coordsStamp[7]));
 				
-				areasMarkup(partOfBufferedImage, coordsInStamp);
+//				areasMarkup(partOfBufferedImage1, Arrays.asList(coordsStamp[0], coordsStamp[1], coordsStamp[2], coordsStamp[3]));
+//				areasMarkup(partOfBufferedImage2, Arrays.asList(coordsStamp[4], coordsStamp[5], coordsStamp[6], coordsStamp[7]));
 				
 				try {
-					for(int[] coordInStamp : coordsInStamp) {
-						String text = tesseract.doOCR(partOfBufferedImage, new Rectangle(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]));
-						
-						String res = text.replaceAll("[^\\da-zA-Zа-яёА-ЯЁ]", "").toLowerCase();
-						
-						//System.out.println(Arrays.toString(coordInStamp) + "; " + res);
-						
-						result.append(res + "; ");//result.append(it + ": " + res + "; ");
-						
-//						Cell cell = row.createCell(indexCell++);
-//						cell.setCellValue(res);
+//					for(int[] coordInStamp : coordsInStamp) {
+//						String res;
+////						for(Word word : tesseract.getWords(partOfBufferedImage.getSubimage(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]),
+////								ITessAPI.TessPageIteratorLevel.RIL_TEXTLINE)) {
+////							Rectangle rect = word.getBoundingBox();
+////							
+////							System.out.println(rect.getMinX()+","+rect.getMaxX()+","+rect.getMinY()+","+rect.getMaxY()+": "+word.getText());
+////						}
 //						
-//						Cell cellFormula = row.createCell(indexCell);
-//						cellFormula.setCellFormula(getColumnName(indexCell-1) + (row.getRowNum()+1) + "=J" + (row.getRowNum()+1));
-//						indexCell++;
-					}
+//						System.out.println("Основной штамп");
+//						String stampText = tesseract.doOCR(partOfBufferedImage1, new Rectangle(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]));
+//						res = stampText.replaceAll("[^\\da-zA-Zа-яёА-ЯЁ]", "").toLowerCase();
+//						System.out.println(Arrays.toString(coordInStamp) + "; " + res);
+//						
+////						result.append(res + "; ");//result.append(it + ": " + res + "; ");
+//						
+////						Cell cell = row.createCell(indexCell++);
+////						cell.setCellValue(res);
+////						
+////						Cell cellFormula = row.createCell(indexCell);
+////						cellFormula.setCellFormula(getColumnName(indexCell-1) + (row.getRowNum()+1) + "=J" + (row.getRowNum()+1));
+////						indexCell++;
+//					}
+					System.out.println("Верхняя таблица");
+					String text = tesseract.doOCR(partOfBufferedImage2);//, new Rectangle(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]));
+					String res = text;//.replaceAll("[^\\da-zA-Zа-яёА-ЯЁ]", "").toLowerCase();
+					System.out.println(res);
+					
 				} catch (TesseractException ex) {
 					ex.printStackTrace();
 				}
 				
-				ImageIO.write(partOfBufferedImage, "png", new File(absPath + "output/" + page + "_" + it + ".png"));
+//				ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/stamp1_" + page + "_" + it + ".png"));
+//				ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/stamp2_" + page + "_" + it + ".png"));
 			}
-			System.out.println(result.toString());
+//			System.out.println(result.toString());
 		}
 		document.close();
 		
 	}
 	
-	private static void areasMarkup(BufferedImage partOfBufferedImage, ArrayList<int[]> coordsInStamp) {
+	private static void areasMarkup(BufferedImage partOfBufferedImage, List<Integer> _coordsInStamp) {
 		Graphics2D g2d = partOfBufferedImage.createGraphics();
 		g2d.setColor(Color.red);
 		
-		for(int[] coordInStamp : coordsInStamp)
-			g2d.drawRect(coordInStamp[0], coordInStamp[1], coordInStamp[2], coordInStamp[3]);
+		g2d.drawRect(_coordsInStamp.get(0), _coordsInStamp.get(1), _coordsInStamp.get(2), _coordsInStamp.get(3));
 		
 		g2d.dispose();
 	}
@@ -192,17 +217,17 @@ public class MainClass {
 		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
 	}
 	
-	private static String getColumnName(int columnNumber) {
-		String columnName = "";
-		int dividend = columnNumber + 1;
-		int modulus;
-		while (dividend > 0){
-			modulus = (dividend - 1) % 26;
-			columnName = (char)(65 + modulus) + columnName;
-			dividend = (int)((dividend - modulus) / 26);
-		}
-		return columnName;
-	}
+//	private static String getColumnName(int columnNumber) {
+//		String columnName = "";
+//		int dividend = columnNumber + 1;
+//		int modulus;
+//		while (dividend > 0){
+//			modulus = (dividend - 1) % 26;
+//			columnName = (char)(65 + modulus) + columnName;
+//			dividend = (int)((dividend - modulus) / 26);
+//		}
+//		return columnName;
+//	}
 	
 /*https://stackoverflow.com/questions/57160892/tesseract-error-warning-invalid-resolution-0-dpi-using-70-instead
 PageSegMode - Режимы сегментации страницы:

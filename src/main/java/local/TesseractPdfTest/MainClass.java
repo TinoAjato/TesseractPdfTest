@@ -157,7 +157,7 @@ public class MainClass {
 					String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
 					requisitesAreaText = requisitesAreaText.toLowerCase();
 					
-					Pattern pattern2_2 = Pattern.compile(".*([0-3]?[0-9]{1}).*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
+					Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
 					Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
 					if(matcher2_2.find())
 						System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));

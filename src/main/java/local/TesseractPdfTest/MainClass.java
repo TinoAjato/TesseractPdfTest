@@ -24,23 +24,18 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class MainClass {
 	
-	private static String absPath = "F:/TesseractTest/Кривые ТН/";
-	private static int[] coords;
-	private static ArrayList<Rectangle> coordsInStandardStamp = new ArrayList<Rectangle>();
-//	private static List<ImageType> imageTypes = Arrays.asList(/*ImageType.ARGB, */ImageType.RGB/*, ImageType.GRAY, ImageType.BINARY*/);
+	private static String absPath = "F:/TesseractTest/ttn/";
 	
-//	private static int[] pageSegMode = new int[]{/*0, 1, 2, 3, */4/*, 5*/, 6/*, 7, 8, 9, 10, 11, 12, 13*/};
+	private static final int scl = 1;
 	
 	public static void main(String[] args) {
 		long start = System.nanoTime();
 		
-//		for(int psm : pageSegMode) {
-			try {
-				run();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-//		}
+		try {
+			run();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		long elapsed = System.nanoTime() - start;
 		System.out.println("Время работы программы, с: " + elapsed / 1000000000);
@@ -48,7 +43,7 @@ public class MainClass {
 	
 	private static void run() throws IOException {
 		
-		PDDocument document = PDDocument.load(new File(absPath + "af.pdf"));
+		PDDocument document = PDDocument.load(new File(absPath + "af_.pdf"));
 		PDFRenderer pdfRenderer = new PDFRenderer(document);
 		
 		ITesseract tesseract = new Tesseract();
@@ -56,7 +51,7 @@ public class MainClass {
 		tesseract.setLanguage("rus");
 		tesseract.setPageSegMode(4);
 		tesseract.setOcrEngineMode(2);
-		tesseract.setTessVariable("user_defined_dpi", "300");
+		tesseract.setTessVariable("user_defined_dpi", "300");//300*scl
 		
 		int lastPage = document.getNumberOfPages();
 		
@@ -64,132 +59,134 @@ public class MainClass {
 		for (int page = 0; page < lastPage; page++) {
 			System.out.println("**** page = " + page);
 			
-//			for(ImageType it : imageTypes) {
+			//получаем картинку в 300DPI и в градации серого
+			BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(page, 300*scl, ImageType.RGB);
+			
+			BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(bufferedImage);
+			
+			int[] coords;
+			ArrayList<Rectangle> coordsInStandardStamp = new ArrayList<Rectangle>();
+			
+			//если высота листа больше его ширины, то это портретная ориентация
+			if(bufferedImage.getHeight() > bufferedImage.getWidth()) {
+				//портретная ориентация
+				coords = new int[]{
+						180*scl, 375*scl, 2150*scl, 255*scl,//область стандартного штампа
+						885*scl, 150*scl, 965*scl, 230*scl,//область УНП
+						0*scl, 595*scl, 2300*scl, 495*scl,//область реквизитов
+				};
 				
-				//получаем картинку в 300DPI и в градации серого
-				BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB);
+				//прямоугольник серии
+				coordsInStandardStamp.add(new Rectangle(0*scl, 0*scl, 260*scl, 110*scl));
+				//прямоугольник наименования типа
+				coordsInStandardStamp.add(new Rectangle(220*scl, 55*scl, 800*scl, 160*scl));//70
+				//прямоугольник номера штрихкода
+				coordsInStandardStamp.add(new Rectangle(1060*scl, 125*scl, 510*scl, 110*scl));
+			} else {
+				//альбомная ориентация
+				coords = new int[]{
+						180*scl, 265*scl, 3150*scl, 280*scl,//область стандартного штампа
+						1375*scl, 80*scl, 1100*scl, 200*scl,//область УНП
+						0*scl, 470*scl, 3300*scl, 350*scl,//область реквизитов
+				};
 				
-				BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(bufferedImage);
+				//прямоугольник серии
+				coordsInStandardStamp.add(new Rectangle(0*scl, 0*scl, 260*scl, 110*scl));
+				//прямоугольник наименования типа
+				coordsInStandardStamp.add(new Rectangle(220*scl, 70*scl, 1820*scl, 160*scl));
+				//прямоугольник номера штрихкода
+				coordsInStandardStamp.add(new Rectangle(2070*scl, 160*scl, 510*scl, 110*scl));
+			}
+			
+			//получаем часть изображения где идет указание серии, типа и штрих-код
+			BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
+			
+			//получаем часть изображения где идет УНП грузополучателя
+			BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
+			
+			//получаем часть изображения с реквизитами
+			BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(coords[8], coords[9], coords[10], coords[11]));
+			
+			try {
+//				System.out.println("Область стандартного штампа");
 				
-				//если высота листа больше его ширины, то это портретная ориентация
-				if(bufferedImage.getHeight() > bufferedImage.getWidth()) {
-					//портретная ориентация
-					coords = new int[]{
-							180, 375, 2150, 255,//область стандартного штампа
-							885, 150, 965, 230,//область УНП
-							0, 595, 2300, 495,//область реквизитов
-					};
-					
-					//прямоугольник серии
-					coordsInStandardStamp.add(new Rectangle(0, 0, 260, 110));
-					//прямоугольник наименования типа
-					coordsInStandardStamp.add(new Rectangle(220, 70, 800, 160));
-					//прямоугольник номера штрихкода
-					coordsInStandardStamp.add(new Rectangle(1060, 125, 510, 110));
-				} else {
-					//альбомная ориентация
-					coords = new int[]{
-							180, 265, 3150, 280,//область стандартного штампа
-							1375, 80, 1100, 200,//область УНП
-							885, 150, 965, 230,//область реквизитов
-					};
-					
-					//прямоугольник серии
-					coordsInStandardStamp.add(new Rectangle(0, 0, 260, 110));
-					//прямоугольник наименования типа
-					coordsInStandardStamp.add(new Rectangle(220, 70, 1820, 160));
-					//прямоугольник номера штрихкода
-					coordsInStandardStamp.add(new Rectangle(2070, 160, 510, 110));
-				}
+				String seriesText = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(0));
+				seriesText = seriesText.toLowerCase().replaceAll("[^а-яё]|(сер[ин]я)", "");
+				if(seriesText.length() > 0)
+					System.out.println("Серия: " + seriesText);
+				else
+					System.out.println("Серия: отсутствует");
 				
-				//получаем часть изображения где идет указание серии, типа и штрих-код
-				BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
+				String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
+				type = type.toLowerCase().replaceAll("[^а-яё]", "");
+				if(type.length() > 0)
+					System.out.println("Тип: " + type);
+				else
+					System.out.println("Тип: отсутствует");
 				
-				//получаем часть изображения где идет УНП грузополучателя
-				BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
+				String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
+				barcode = barcode.replaceAll("[^\\d]", "");
+				if(barcode.length() > 0)
+					System.out.println("Штрихкод: " + barcode);
+				else
+					System.out.println("Штрихкод: отсутствует");
 				
-				//получаем часть изображения с реквизитами
-				BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(coords[8], coords[9], coords[10], coords[11]));
 				
-//				//обводка областей стандартного штампа, где идет определение
-//				for(int[] coordInStandardStamp : coordsInStandardStamp)
-//					areasMarkup(partOfBufferedImage1, coordInStandardStamp);
+//				System.out.println("Область УНП");
 				
-				try {
-//					System.out.println("Область стандартного штампа");
-					
-					String seriesText = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(0));
-					seriesText = seriesText.toLowerCase().replaceAll("[^а-яё]", "").replaceAll("серия", "");
-					if(seriesText.length() > 0)
-						System.out.println("Серия: " + seriesText);
-					else
-						System.out.println("Серия: отсутствует");
-					
-					String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
-					type = type.toLowerCase().replaceAll("[^а-яё]", "");
-					if(type.length() > 0)
-						System.out.println("Тип: " + type);
-					else
-						System.out.println("Тип: отсутствует");
-					
-					String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
-					barcode = barcode.replaceAll("[^\\d]", "");
-					if(barcode.length() > 0)
-						System.out.println("Штрихкод: " + barcode);
-					else
-						System.out.println("Штрихкод: отсутствует");
-					
-					
-//					System.out.println("Область УНП");
-					
-					String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
-					unpAreaText = unpAreaText.toLowerCase();
-					Pattern pattern1 = Pattern.compile("(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8}).+?(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})");
-					Matcher matcher1 = pattern1.matcher(unpAreaText);
-					if(matcher1.find())
-						System.out.println("УНП грузополучателя: " + matcher1.group(2));
-					else
-						System.out.println("УНП грузополучателя: отсутствует");
-					
-					
-//					System.out.println("Область реквизитов");
-					
-					String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
-					requisitesAreaText = requisitesAreaText.toLowerCase();
-					
-					Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
-					Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
-					if(matcher2_2.find())
-						System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));
-					else
-						System.out.println("Дата: отсутствует");
-					
-					Pattern pattern2 = Pattern.compile("(?:атель)(.+?)(?:\\n)");
-					Matcher matcher2 = pattern2.matcher(requisitesAreaText);
-					if(matcher2.find())
-						System.out.println("Наименование грузополучателя: " + matcher2.group(1));
-					else
-						System.out.println("Наименование грузополучателя: отсутствует");
-					
-				} catch (TesseractException ex) {
-					ex.printStackTrace();
-				}
+				String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
+				unpAreaText = unpAreaText.toLowerCase();
+				Pattern pattern1 = Pattern.compile("(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})(?:.*?|\\s*?)(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})");
+				Matcher matcher1 = pattern1.matcher(unpAreaText);
+				if(matcher1.find())
+					System.out.println("УНП грузополучателя: " + matcher1.group(2));
+				else
+					System.out.println("УНП грузополучателя: отсутствует");
 				
-//				ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/page_" + page + "_stamp1.png"));
-//				ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/page_" + page + "_stamp2.png"));
-//				ImageIO.write(partOfBufferedImage3, "png", new File(absPath + "output/page_" + page + "_stamp3.png"));
-//			}
+				
+//				System.out.println("Область реквизитов");
+				
+				String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
+				requisitesAreaText = requisitesAreaText.toLowerCase();
+				
+				Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
+				Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
+				if(matcher2_2.find())
+					System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));
+				else
+					System.out.println("Дата: отсутствует");
+				
+				Pattern pattern2 = Pattern.compile("(?:чатель)(.+?)(?:\\n)");
+				Matcher matcher2 = pattern2.matcher(requisitesAreaText);
+				if(matcher2.find())
+					System.out.println("Наименование грузополучателя: " + matcher2.group(1));
+				else
+					System.out.println("Наименование грузополучателя: отсутствует");
+				
+			} catch (TesseractException ex) {
+				ex.printStackTrace();
+			}
+			
+			//обводка областей стандартного штампа, где идет определение
+			for(Rectangle coordInStandardStamp : coordsInStandardStamp)
+				areasMarkup(partOfBufferedImage1, coordInStandardStamp);
+			
+			ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/page_" + page + "_stamp1.png"));
+			ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/page_" + page + "_stamp2.png"));
+			ImageIO.write(partOfBufferedImage3, "png", new File(absPath + "output/page_" + page + "_stamp3.png"));
+			
 			System.out.println();
 		}
 		document.close();
 	}
 	
-//	private static void areasMarkup(BufferedImage partOfBufferedImage, int[] _coords) {
-//		Graphics2D g2d = partOfBufferedImage.createGraphics();
-//		g2d.setColor(Color.BLACK);
-//		g2d.drawRect(_coords[0], _coords[1], _coords[2], _coords[3]);
-//		g2d.dispose();
-//	}
+	@SuppressWarnings("unused")
+	private static void areasMarkup(BufferedImage partOfBufferedImage, Rectangle coordInStandardStamp) {
+		Graphics2D g2d = partOfBufferedImage.createGraphics();
+		g2d.setColor(Color.BLACK);
+		g2d.drawRect(coordInStandardStamp.x,coordInStandardStamp.y, coordInStandardStamp.width, coordInStandardStamp.height);
+		g2d.dispose();
+	}
 	
 	public static BufferedImage deepCopy(BufferedImage bi) {
 		ColorModel cm = bi.getColorModel();

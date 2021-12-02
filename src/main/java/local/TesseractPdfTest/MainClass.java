@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.text.similarity.JaccardSimilarity;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -24,7 +25,7 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class MainClass {
 	
-	private static String absPath = "F:/TesseractTest/ttn/";
+	private static String absPath = "F:/TesseractTest/tn/";
 	
 	private static final int scl = 1;
 	
@@ -101,11 +102,11 @@ public class MainClass {
 			//получаем часть изображения где идет указание серии, типа и штрих-код
 			BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
 			
-			//получаем часть изображения где идет УНП грузополучателя
-			BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
-			
-			//получаем часть изображения с реквизитами
-			BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(coords[8], coords[9], coords[10], coords[11]));
+//			//получаем часть изображения где идет УНП грузополучателя
+//			BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
+//			
+//			//получаем часть изображения с реквизитами
+//			BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(coords[8], coords[9], coords[10], coords[11]));
 			
 			try {
 //				System.out.println("Область стандартного штампа");
@@ -119,61 +120,69 @@ public class MainClass {
 				
 				String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
 				type = type.toLowerCase().replaceAll("[^а-яё]", "");
-				if(type.length() > 0)
-					System.out.println("Тип: " + type);
-				else
-					System.out.println("Тип: отсутствует");
+				//с помощью коэффициента Жаккарда отпределяем к какому типу относится накладная
+				double jaccardIndex_tn = new JaccardSimilarity().apply("товарнаянакладная", type);
+				double jaccardIndex_ttn = new JaccardSimilarity().apply("товарнотранспортнаянакладная", type);
+				//если больше 0.61 то достоверно, иначе не ТН и не ТТН
+				if(Double.max(jaccardIndex_tn, jaccardIndex_ttn) > 0.61) {
+					if(Double.compare(jaccardIndex_tn, jaccardIndex_ttn) >= 0) {
+						System.out.println("Тип: ТН");
+					} else {
+						System.out.println("Тип: ТТН");
+					}
+				} else
+					System.out.println("Это не первая страница накладной");
 				
-				String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
-				barcode = barcode.replaceAll("[^\\d]", "");
-				if(barcode.length() > 0)
-					System.out.println("Штрихкод: " + barcode);
-				else
-					System.out.println("Штрихкод: отсутствует");
-				
-				
-//				System.out.println("Область УНП");
-				
-				String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
-				unpAreaText = unpAreaText.toLowerCase();
-				Pattern pattern1 = Pattern.compile("(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})(?:.*?|\\s*?)(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})");
-				Matcher matcher1 = pattern1.matcher(unpAreaText);
-				if(matcher1.find())
-					System.out.println("УНП грузополучателя: " + matcher1.group(2));
-				else
-					System.out.println("УНП грузополучателя: отсутствует");
-				
-				
-//				System.out.println("Область реквизитов");
-				
-				String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
-				requisitesAreaText = requisitesAreaText.toLowerCase();
-				
-				Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
-				Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
-				if(matcher2_2.find())
-					System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));
-				else
-					System.out.println("Дата: отсутствует");
-				
-				Pattern pattern2 = Pattern.compile("(?:чатель)(.+?)(?:\\n)");
-				Matcher matcher2 = pattern2.matcher(requisitesAreaText);
-				if(matcher2.find())
-					System.out.println("Наименование грузополучателя: " + matcher2.group(1));
-				else
-					System.out.println("Наименование грузополучателя: отсутствует");
+//				String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
+//				barcode = barcode.replaceAll("[^\\d]", "");
+//				if(barcode.length() > 0)
+//					System.out.println("Штрихкод: " + barcode);
+//				else
+//					System.out.println("Штрихкод: отсутствует");
+//				
+//				
+////				System.out.println("Область УНП");
+//				
+//				String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
+//				unpAreaText = unpAreaText.toLowerCase();
+//				Pattern pattern1 = Pattern.compile("(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})(?:.*?|\\s*?)(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})");
+//				Matcher matcher1 = pattern1.matcher(unpAreaText);
+//				if(matcher1.find())
+//					System.out.println("УНП грузополучателя: " + matcher1.group(2));
+//				else
+//					System.out.println("УНП грузополучателя: отсутствует");
+//				
+//				
+////				System.out.println("Область реквизитов");
+//				
+//				String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
+//				requisitesAreaText = requisitesAreaText.toLowerCase();
+//				
+//				Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
+//				Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
+//				if(matcher2_2.find())
+//					System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));
+//				else
+//					System.out.println("Дата: отсутствует");
+//				
+//				Pattern pattern2 = Pattern.compile("(?:чатель)(.+?)(?:\\n)");
+//				Matcher matcher2 = pattern2.matcher(requisitesAreaText);
+//				if(matcher2.find())
+//					System.out.println("Наименование грузополучателя: " + matcher2.group(1));
+//				else
+//					System.out.println("Наименование грузополучателя: отсутствует");
 				
 			} catch (TesseractException ex) {
 				ex.printStackTrace();
 			}
 			
-			//обводка областей стандартного штампа, где идет определение
-			for(Rectangle coordInStandardStamp : coordsInStandardStamp)
-				areasMarkup(partOfBufferedImage1, coordInStandardStamp);
-			
-			ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/page_" + page + "_stamp1.png"));
-			ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/page_" + page + "_stamp2.png"));
-			ImageIO.write(partOfBufferedImage3, "png", new File(absPath + "output/page_" + page + "_stamp3.png"));
+//			//обводка областей стандартного штампа, где идет определение
+//			for(Rectangle coordInStandardStamp : coordsInStandardStamp)
+//				areasMarkup(partOfBufferedImage1, coordInStandardStamp);
+//			
+//			ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/page_" + page + "_stamp1.png"));
+//			ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/page_" + page + "_stamp2.png"));
+//			ImageIO.write(partOfBufferedImage3, "png", new File(absPath + "output/page_" + page + "_stamp3.png"));
 			
 			System.out.println();
 		}

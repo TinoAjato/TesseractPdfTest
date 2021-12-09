@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 
 import org.apache.commons.text.similarity.JaccardSimilarity;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
@@ -28,7 +29,7 @@ import net.sourceforge.tess4j.TesseractException;
 
 public class MainClass {
 	
-	private static String absPath = "F:/TesseractTest/tn/";
+	private static String absPath = "F:/TesseractTest/ttn/";
 	
 	private static final int scl = 1;
 	
@@ -65,10 +66,7 @@ public class MainClass {
 		for (int page = 0; page < lastPage; page++) {
 			System.out.println("**** page = " + page);
 			
-			ConsignmentNoteAfterBatchProcessing consignmentNoteAbp = new ConsignmentNoteAfterBatchProcessing(
-						page+1,
-						page+1
-					);
+			ConsignmentNoteAfterBatchProcessing cnAbp = new ConsignmentNoteAfterBatchProcessing(page+1);
 			
 			//получаем картинку в 300DPI и в градации серого
 			BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(
@@ -115,33 +113,39 @@ public class MainClass {
 				//получаем часть изображения где идет указание серии, типа и штрих-код
 				BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
 				
+				/*ТИП*/
 				String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
 				type = type.toLowerCase().replaceAll("[^а-яё]", "");
+				
 				//с помощью коэффициента Жаккарда отпределяем к какому типу относится накладная
 				double jaccardIndex_tn = new JaccardSimilarity().apply("товарнаянакладная", type);
 				double jaccardIndex_ttn = new JaccardSimilarity().apply("товарнотранспортнаянакладная", type);
+				
 				//если больше 0.61 то достоверно, иначе не ТН и не ТТН
 				if(Double.max(jaccardIndex_tn, jaccardIndex_ttn) > 0.61) {
 					if(Double.compare(jaccardIndex_tn, jaccardIndex_ttn) >= 0) {
-						System.out.println("Тип: ТН");
+						cnAbp.setDocumentTypeName("ТН");
 					} else {
-						System.out.println("Тип: ТТН");
+						cnAbp.setDocumentTypeName("ТТН");
 					}
 				} else {
-					System.out.println("Это не первая страница накладной!");
-					
-					//увеличить splitterEndPage прошлой накладной на +1
-					
+					int cnAbpLastIndex = consignmentNotesAbp.size() - 1;
+					if(cnAbpLastIndex >= 0) {
+						consignmentNotesAbp.get(cnAbpLastIndex).setSplitterEndPage(consignmentNotesAbp.get(cnAbpLastIndex).getSplitterEndPage() + 1);
+					}
 					continue;
 				}
 				
+				/*СЕРИЯ*/
 				String seriesText = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(0));
 				seriesText = seriesText.toLowerCase().replaceAll("[^а-яё]|(сер[ин]я)", "");
-				if(seriesText.length() > 0)
-					System.out.println("Серия: " + seriesText);
-				else
-					System.out.println("Серия: отсутствует");
+				if(seriesText.length() > 0) {
+					cnAbp.setConsignmentSeries(seriesText);
+				} else {
+					cnAbp.setConsignmentSeries("");
+				}
 				
+				/*ШТРИХКОД*/
 //				String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
 //				barcode = barcode.replaceAll("[^\\d]", "");
 //				if(barcode.length() > 0)
@@ -153,7 +157,9 @@ public class MainClass {
 				for(Rectangle coordInStandardStamp : coordsInStandardStamp)
 					areasMarkup(partOfBufferedImage1, coordInStandardStamp);
 				
-				ImageIO.write(partOfBufferedImage1, "png", new File(absPath + "output/page_" + page + "_stamp1.png"));
+				cnAbp.setArea1Path(absPath + "output/" + cnAbp.getUuid() + "_area1.png");
+				
+				ImageIO.write(partOfBufferedImage1, "png", new File(cnAbp.getArea1Path()));
 				
 			} catch (TesseractException ex) {
 				ex.printStackTrace();
@@ -165,16 +171,20 @@ public class MainClass {
 				//получаем часть изображения где идет УНП грузополучателя
 				BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
 				
+				/*УНП*/
 				String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
 				unpAreaText = unpAreaText.toLowerCase();
 				Pattern pattern1 = Pattern.compile("(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})(?:.*?|\\s*?)(\\d{12}|\\d{10}|\\d{9}|[авсенкмabcehkm]{1}\\d{8})");
 				Matcher matcher1 = pattern1.matcher(unpAreaText);
-				if(matcher1.find())
-					System.out.println("УНП грузополучателя: " + matcher1.group(2));
-				else
-					System.out.println("УНП грузополучателя: отсутствует");
+				if(matcher1.find()) {
+					cnAbp.setConsigneeUPN(matcher1.group(2));
+				} else {
+					cnAbp.setConsigneeUPN("");
+				}
 				
-				ImageIO.write(partOfBufferedImage2, "png", new File(absPath + "output/page_" + page + "_stamp2.png"));
+				cnAbp.setArea2Path(absPath + "output/" + cnAbp.getUuid() + "_area2.png");
+				
+				ImageIO.write(partOfBufferedImage2, "png", new File(cnAbp.getArea2Path()));
 				
 			} catch (TesseractException ex) {
 				ex.printStackTrace();
@@ -189,42 +199,59 @@ public class MainClass {
 				String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
 				requisitesAreaText = requisitesAreaText.toLowerCase();
 				
+				/*ДАТА*/
 				Pattern pattern2_2 = Pattern.compile("(0?[1-9]|[1-2][0-9]|3[01])(?:(?!0?[1-9]|[1-2][0-9]|3[01]).)*(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря){1}.*?(20[0-9]?[0-9]?)");
 				Matcher matcher2_2 = pattern2_2.matcher(requisitesAreaText);
-				if(matcher2_2.find())
-					System.out.println("Дата: " + matcher2_2.group(1) + " " + matcher2_2.group(2) + " " + matcher2_2.group(3));
-				else
-					System.out.println("Дата: отсутствует");
+				if(matcher2_2.find()) {
+					cnAbp.setDate(matcher2_2.group(1) + "." + matcher2_2.group(2) + "." + matcher2_2.group(3));
+				} else {
+					cnAbp.setDate("");
+				}
 				
+				/*НАИМЕНОВАНИЕ ГРУЗОПОЛУЧАТЕЛЯ*/
 				Pattern pattern2 = Pattern.compile("(?:чатель)(.+?)(?:\\n)");
 				Matcher matcher2 = pattern2.matcher(requisitesAreaText);
-				if(matcher2.find())
-					System.out.println("Наименование грузополучателя: " + matcher2.group(1));
-				else
-					System.out.println("Наименование грузополучателя: отсутствует");
+				if(matcher2.find()) {
+					cnAbp.setConsigneeName(matcher2.group(1));
+				} else {
+					cnAbp.setConsigneeName("");
+				}
 				
-				ImageIO.write(partOfBufferedImage3, "png", new File(absPath + "output/page_" + page + "_stamp3.png"));
+				cnAbp.setArea3Path(absPath + "output/" + cnAbp.getUuid() + "_area3.png");
+				
+				ImageIO.write(partOfBufferedImage3, "png", new File(cnAbp.getArea3Path()));
 				
 			} catch (TesseractException ex) {
 				ex.printStackTrace();
 			}
 			
-			
-			consignmentNotesAbp.add(consignmentNoteAbp);
+			consignmentNotesAbp.add(cnAbp);
 		}
 		
-//		Splitter splitter = new Splitter();
-//		splitter.setStartPage(1);
-//		splitter.setEndPage(2);
-//		splitter.setSplitAtPage(2);
-//		
-//		List<PDDocument> lst = splitter.split(document);
-//		
-//		for(int i = 0; i < lst.size(); i++) {
-//			File f = new File(absPath + "output/" + i + "_part.pdf");
-//			lst.get(i).save(f);
-//			lst.get(i).close();
-//		}
+		PDFMergerUtility mergerUtility = new PDFMergerUtility();
+		for(ConsignmentNoteAfterBatchProcessing cnAbp : consignmentNotesAbp) {
+			/*Делим исходную PDF*/
+			Splitter splitter = new Splitter();
+			splitter.setStartPage(cnAbp.getSplitterStartPage());
+			splitter.setEndPage(cnAbp.getSplitterEndPage());
+			splitter.setSplitAtPage(cnAbp.getSplitterAtPage());
+			
+			List<PDDocument> splitList = splitter.split(document);
+			
+			cnAbp.setSplitPdfFilePath(absPath + "output/" + cnAbp.getUuid() + "_split_file.pdf");
+			
+			PDDocument resultDocument = new PDDocument();
+			
+			for(PDDocument splitDocument : splitList) {
+				mergerUtility.appendDocument(resultDocument, splitDocument);
+				splitDocument.close();
+			}
+			
+			resultDocument.save(cnAbp.getSplitPdfFilePath());
+			resultDocument.close();
+		}
+		
+		consignmentNotesAbp.forEach(System.out::println);
 		
 		document.close();
 	}

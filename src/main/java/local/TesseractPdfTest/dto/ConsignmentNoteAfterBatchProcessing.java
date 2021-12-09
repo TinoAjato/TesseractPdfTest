@@ -1,26 +1,38 @@
 package local.TesseractPdfTest.dto;
 
-import java.io.File;
+import java.util.UUID;
 
 public class ConsignmentNoteAfterBatchProcessing {
 	
+	/***/
+	private UUID uuid;
+	
+	/***/
 	private String consignmentSeries;
 	
+	/***/
 	private String documentTypeName;
 	
+	/***/
 	private String consigneeUPN;
 	
+	/***/
 	private String date;
 	
+	/***/
 	private String consigneeName;
 	
-	private File png1Area;
+	/***/
+	private String area1Path;
 	
-	private File png2Area;
+	/***/
+	private String area2Path;
 	
-	private File png3Area;
+	/***/
+	private String area3Path;
 	
-	private File splitPdfFile;
+	/***/
+	private String splitPdfFilePath;
 	
 	private int splitterStartPage = 0;
 	
@@ -29,11 +41,17 @@ public class ConsignmentNoteAfterBatchProcessing {
 	private int splitterAtPage = 0;
 	
 	
-	public ConsignmentNoteAfterBatchProcessing(int splitterStartPage, int splitterEndPage) {
-		this.splitterStartPage = splitterStartPage;
-		this.splitterEndPage = splitterEndPage;
+	public ConsignmentNoteAfterBatchProcessing(int page) {
+		this.splitterStartPage = page;
+		this.splitterEndPage = page;
+		this.uuid = UUID.randomUUID();
 	}
 	
+	
+	/**Возвращает */
+	public UUID getUuid() {
+		return uuid;
+	}
 	
 	/**Возвращает */
 	public String getConsignmentSeries() {
@@ -81,39 +99,39 @@ public class ConsignmentNoteAfterBatchProcessing {
 	}
 	
 	/**Возвращает */
-	public File getPng1Area() {
-		return png1Area;
+	public String getArea1Path() {
+		return area1Path;
 	}
 	/**Устанавливает */
-	public void setPng1Area(File png1Area) {
-		this.png1Area = png1Area;
+	public void setArea1Path(String area1Path) {
+		this.area1Path = area1Path;
 	}
 	
 	/**Возвращает */
-	public File getPng2Area() {
-		return png2Area;
+	public String getArea2Path() {
+		return area2Path;
 	}
 	/**Устанавливает */
-	public void setPng2Area(File png2Area) {
-		this.png2Area = png2Area;
+	public void setArea2Path(String area2Path) {
+		this.area2Path = area2Path;
 	}
 	
 	/**Возвращает */
-	public File getPng3Area() {
-		return png3Area;
+	public String getArea3Path() {
+		return area3Path;
 	}
 	/**Устанавливает */
-	public void setPng3Area(File png3Area) {
-		this.png3Area = png3Area;
+	public void setArea3Path(String area3Path) {
+		this.area3Path = area3Path;
 	}
 	
 	/**Возвращает */
-	public File getSplitPdfFile() {
-		return splitPdfFile;
+	public String getSplitPdfFilePath() {
+		return splitPdfFilePath;
 	}
 	/**Устанавливает */
-	public void setSplitPdfFile(File splitPdfFile) {
-		this.splitPdfFile = splitPdfFile;
+	public void setSplitPdfFilePath(String splitPdfFilePath) {
+		this.splitPdfFilePath = splitPdfFilePath;
 	}
 	
 	/**Возвращает */
@@ -151,4 +169,19 @@ public class ConsignmentNoteAfterBatchProcessing {
 		return splitterAtPage;
 	}
 	
+	
+	@Override
+	public String toString() {
+		return "ConsignmentNoteAfterBatchProcessing"
+				+ " [consignmentSeries=" + consignmentSeries
+				+ ", documentTypeName=" + documentTypeName
+				+ ", consigneeUPN=" + consigneeUPN
+				+ ", date=" + date
+				+ ", consigneeName=" + consigneeName
+				+ ", area1Path=" + area1Path
+				+ ", area2Path=" + area2Path
+				+ ", area3Path=" + area3Path
+				+ ", splitPdfFilePath=" + splitPdfFilePath
+				+ "]";
+	}
 }

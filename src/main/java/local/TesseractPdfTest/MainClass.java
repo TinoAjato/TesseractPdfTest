@@ -21,6 +21,7 @@ import org.apache.commons.text.similarity.JaccardSimilarity;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
@@ -33,9 +34,31 @@ public class MainClass {
 	
 	private static String absPath = "F:/TesseractTest/tn/";
 	
-	private static final int scl = 1;
-	
 	private static List<ConsignmentNoteAfterBatchProcessing> consignmentNotesAbp = new ArrayList<ConsignmentNoteAfterBatchProcessing>();
+	
+	/**портретная ориентация*/
+	private static Rectangle standardStampArea_p = new Rectangle(180, 375, 2150, 255);
+	private static Rectangle unpArea_p = new Rectangle(885, 150, 965, 230);
+	private static Rectangle requisitesArea_p = new Rectangle(0, 595, 2300, 495);
+	
+	/**альбомная ориентация*/
+	private static Rectangle standardStampArea_l = new Rectangle(180, 265, 3150, 280);
+	private static Rectangle unpArea_l = new Rectangle(1375, 80, 1100, 200);
+	private static Rectangle requisitesArea_l = new Rectangle(0, 470, 3300, 350);
+	
+	//прямоугольник серии
+	private static Rectangle rectangleSeries_p = new Rectangle(0, 0, 260, 110);
+	//прямоугольник наименования типа
+	private static Rectangle typeNameRectangle_p = new Rectangle(220, 55, 800, 160);
+////	//прямоугольник номера штрихкода
+//	private static Rectangle barcodeNumberRectangle_p = new Rectangle(1060, 125, 510, 110);
+	
+	//прямоугольник серии
+	private static Rectangle rectangleSeries_l = new Rectangle(0, 0, 260, 110);
+	//прямоугольник наименования типа
+	private static Rectangle typeNameRectangle_l = new Rectangle(220, 70, 1820, 160);
+////	//прямоугольник номера штрихкода
+//	private static Rectangle barcodeNumberRectangle_l = new Rectangle(2070, 160, 510, 110);
 	
 	
 	public static void main(String[] args) {
@@ -58,9 +81,9 @@ public class MainClass {
 			tesseract.setLanguage("rus");
 			tesseract.setPageSegMode(4);
 			tesseract.setOcrEngineMode(2);
-			tesseract.setTessVariable("user_defined_dpi", "300");//300*scl
+			tesseract.setTessVariable("user_defined_dpi", "300");
 			
-			int lastPage = 2;//document.getNumberOfPages();
+			int lastPage = 3;//document.getNumberOfPages();
 			
 			for (int page = 0; page < lastPage; page++) {
 				try {
@@ -68,51 +91,43 @@ public class MainClass {
 					
 					ConsignmentNoteAfterBatchProcessing cnAbp = new ConsignmentNoteAfterBatchProcessing(page+1);
 					
-					//получаем картинку в 300DPI и в градации серого
+					//получаем картинку в 300DPI и в RGB
 					BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(
-							pdfRenderer.renderImageWithDPI(page, 300*scl, ImageType.RGB));
+							pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB));
 					
-					int[] coords;
+					/*Координаты областей распознования*/
+					Rectangle standardStampArea;
+					Rectangle unpArea;
+					Rectangle requisitesArea;
+					/*Координаты областей распознавания стандартного штампа*/
 					ArrayList<Rectangle> coordsInStandardStamp = new ArrayList<Rectangle>();
 					
 					//если высота листа больше его ширины, то это портретная ориентация
 					if(binaryBufferedImage.getHeight() > binaryBufferedImage.getWidth()) {
-						//портретная ориентация
-						coords = new int[]{
-								180*scl, 375*scl, 2150*scl, 255*scl,//область стандартного штампа
-								885*scl, 150*scl, 965*scl, 230*scl,//область УНП
-								0*scl, 595*scl, 2300*scl, 495*scl,//область реквизитов
-						};
+						standardStampArea = standardStampArea_p;
+						unpArea = unpArea_p;
+						requisitesArea = requisitesArea_p;
 						
-						//прямоугольник серии
-						coordsInStandardStamp.add(new Rectangle(0*scl, 0*scl, 260*scl, 110*scl));
-						//прямоугольник наименования типа
-						coordsInStandardStamp.add(new Rectangle(220*scl, 55*scl, 800*scl, 160*scl));//70
-						//прямоугольник номера штрихкода
-						coordsInStandardStamp.add(new Rectangle(1060*scl, 125*scl, 510*scl, 110*scl));
+						coordsInStandardStamp.add(rectangleSeries_p);
+						coordsInStandardStamp.add(typeNameRectangle_p);
+//						coordsInStandardStamp.add(barcodeNumberRectangle_p);
 					} else {
-						//альбомная ориентация
-						coords = new int[]{
-								180*scl, 265*scl, 3150*scl, 280*scl,//область стандартного штампа
-								1375*scl, 80*scl, 1100*scl, 200*scl,//область УНП
-								0*scl, 470*scl, 3300*scl, 350*scl,//область реквизитов
-						};
+						standardStampArea = standardStampArea_l;
+						unpArea = unpArea_l;
+						requisitesArea = requisitesArea_l;
 						
-						//прямоугольник серии
-						coordsInStandardStamp.add(new Rectangle(0*scl, 0*scl, 260*scl, 110*scl));
-						//прямоугольник наименования типа
-						coordsInStandardStamp.add(new Rectangle(220*scl, 70*scl, 1820*scl, 160*scl));
-						//прямоугольник номера штрихкода
-						coordsInStandardStamp.add(new Rectangle(2070*scl, 160*scl, 510*scl, 110*scl));
+						coordsInStandardStamp.add(rectangleSeries_l);
+						coordsInStandardStamp.add(typeNameRectangle_l);
+//						coordsInStandardStamp.add(barcodeNumberRectangle_l);
 					}
-					
 					
 					try {
 //						System.out.println("Область стандартного штампа");
 						Path area1Path = getPath(cnAbp, "__area1.png");
 						
 						//получаем часть изображения где идет указание серии, типа и штрих-код
-						BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(coords[0], coords[1], coords[2], coords[3]));
+						BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(
+								standardStampArea.x, standardStampArea.y, standardStampArea.width, standardStampArea.height));
 						
 						/*ТИП*/
 						String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
@@ -146,13 +161,13 @@ public class MainClass {
 							cnAbp.setConsignmentSeries("");
 						}
 						
-						/*ШТРИХКОД*/
-		//				String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
-		//				barcode = barcode.replaceAll("[^\\d]", "");
-		//				if(barcode.length() > 0)
-		//					System.out.println("Штрихкод: " + barcode);
-		//				else
-		//					System.out.println("Штрихкод: отсутствует");
+						/*ШТРИХКОД
+						String barcode = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(2));
+						barcode = barcode.replaceAll("[^\\d]", "");
+						if(barcode.length() > 0)
+							System.out.println("Штрихкод: " + barcode);
+						else
+							System.out.println("Штрихкод: отсутствует");*/
 						
 						//обводка областей стандартного штампа, где идет определение
 						for(Rectangle coordInStandardStamp : coordsInStandardStamp)
@@ -171,7 +186,8 @@ public class MainClass {
 						Path area2Path = getPath(cnAbp, "__area2.png");
 						
 						//получаем часть изображения где идет УНП грузополучателя
-						BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(coords[4], coords[5], coords[6], coords[7]));
+						BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(
+								unpArea.x, unpArea.y, unpArea.width, unpArea.height));
 						
 						/*УНП*/
 						String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
@@ -197,7 +213,8 @@ public class MainClass {
 						Path area3Path = getPath(cnAbp, "__area3.png");
 						
 						//получаем часть изображения с реквизитами
-						BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(coords[8], coords[9], coords[10], coords[11]));
+						BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(
+								requisitesArea.x, requisitesArea.y, requisitesArea.width, requisitesArea.height));
 						
 						String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
 						requisitesAreaText = requisitesAreaText.toLowerCase();
@@ -258,6 +275,9 @@ public class MainClass {
 							e.printStackTrace();
 						}
 					}
+					
+					if(resultDocument.getNumberOfPages() < 1)
+						resultDocument.addPage(new PDPage());
 					
 					resultDocument.save(path.toFile());
 					

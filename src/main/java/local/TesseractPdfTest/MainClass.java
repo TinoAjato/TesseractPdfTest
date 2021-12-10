@@ -1,11 +1,7 @@
 package local.TesseractPdfTest;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -34,27 +30,25 @@ public class MainClass {
 	
 	private static String absPath = "F:/TesseractTest/tn/";
 	
-	private static List<ConsignmentNoteAfterBatchProcessing> consignmentNotesAbp = new ArrayList<ConsignmentNoteAfterBatchProcessing>();
-	
 	/**портретная ориентация*/
-	private static Rectangle standardStampArea_p = new Rectangle(180, 375, 1021, 255);
-	private static Rectangle unpArea_p = new Rectangle(885, 150, 965, 230);
-	private static Rectangle requisitesArea_p = new Rectangle(0, 595, 2300, 495);
+	private static final Rectangle standardStampArea_p = new Rectangle(180, 375, 1021, 255);
+	private static final Rectangle unpArea_p = new Rectangle(885, 150, 965, 230);
+	private static final Rectangle requisitesArea_p = new Rectangle(0, 595, 2300, 495);
 	
 	/**альбомная ориентация*/
-	private static Rectangle standardStampArea_l = new Rectangle(180, 265, 2041, 280);
-	private static Rectangle unpArea_l = new Rectangle(1375, 80, 1100, 200);
-	private static Rectangle requisitesArea_l = new Rectangle(0, 470, 3300, 350);
+	private static final Rectangle standardStampArea_l = new Rectangle(180, 265, 2041, 280);
+	private static final Rectangle unpArea_l = new Rectangle(1375, 80, 1100, 200);
+	private static final Rectangle requisitesArea_l = new Rectangle(0, 470, 3300, 350);
 	
 	//прямоугольник серии
-	private static Rectangle rectangleSeries_p = new Rectangle(0, 0, 260, 110);
+	private static final Rectangle rectangleSeries_p = new Rectangle(0, 0, 260, 110);
 	//прямоугольник наименования типа
-	private static Rectangle typeNameRectangle_p = new Rectangle(220, 55, 800, 160);
+	private static final Rectangle typeNameRectangle_p = new Rectangle(220, 55, 800, 160);
 	
 	//прямоугольник серии
-	private static Rectangle rectangleSeries_l = new Rectangle(0, 0, 260, 110);
+	private static final Rectangle rectangleSeries_l = new Rectangle(0, 0, 260, 110);
 	//прямоугольник наименования типа
-	private static Rectangle typeNameRectangle_l = new Rectangle(220, 70, 1820, 160);
+	private static final Rectangle typeNameRectangle_l = new Rectangle(220, 70, 1820, 160);
 	
 	
 	public static void main(String[] args) {
@@ -69,6 +63,8 @@ public class MainClass {
 	private static void run() {
 		
 		try(PDDocument document = PDDocument.load(new File(absPath + "af_.pdf"));) {
+			
+			List<ConsignmentNoteAfterBatchProcessing> consignmentNotesAbp = new ArrayList<ConsignmentNoteAfterBatchProcessing>();
 			
 			PDFRenderer pdfRenderer = new PDFRenderer(document);
 			
@@ -88,8 +84,7 @@ public class MainClass {
 					ConsignmentNoteAfterBatchProcessing cnAbp = new ConsignmentNoteAfterBatchProcessing(page+1);
 					
 					//получаем картинку в 300DPI и в RGB
-					BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(
-							pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB));
+					BufferedImage binaryBufferedImage = convertBufferedImageToBINARY(pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB));
 					
 					/*Координаты областей распознования*/
 					Rectangle standardStampArea;
@@ -120,8 +115,8 @@ public class MainClass {
 						Path area1Path = getPath(cnAbp, "__area1.png");
 						
 						//получаем часть изображения где идет указание серии, типа и штрих-код
-						BufferedImage partOfBufferedImage1 = deepCopy(binaryBufferedImage.getSubimage(
-								standardStampArea.x, standardStampArea.y, standardStampArea.width, standardStampArea.height));
+						BufferedImage partOfBufferedImage1 = binaryBufferedImage.getSubimage(
+								standardStampArea.x, standardStampArea.y, standardStampArea.width, standardStampArea.height);
 						
 						/*ТИП*/
 						String type = tesseract.doOCR(partOfBufferedImage1, coordsInStandardStamp.get(1));
@@ -155,9 +150,9 @@ public class MainClass {
 							cnAbp.setConsignmentSeries("");
 						}
 						
-						//обводка областей стандартного штампа, где идет определение
-						for(Rectangle coordInStandardStamp : coordsInStandardStamp)
-							areasMarkup(partOfBufferedImage1, coordInStandardStamp);
+//						//обводка областей стандартного штампа, где идет определение
+//						for(Rectangle coordInStandardStamp : coordsInStandardStamp)
+//							areasMarkup(partOfBufferedImage1, coordInStandardStamp);
 						
 						ImageIO.write(partOfBufferedImage1, "png", area1Path.toFile());
 						
@@ -172,8 +167,8 @@ public class MainClass {
 						Path area2Path = getPath(cnAbp, "__area2.png");
 						
 						//получаем часть изображения где идет УНП грузополучателя
-						BufferedImage partOfBufferedImage2 = deepCopy(binaryBufferedImage.getSubimage(
-								unpArea.x, unpArea.y, unpArea.width, unpArea.height));
+						BufferedImage partOfBufferedImage2 = binaryBufferedImage.getSubimage(
+								unpArea.x, unpArea.y, unpArea.width, unpArea.height);
 						
 						/*УНП*/
 						String unpAreaText = tesseract.doOCR(partOfBufferedImage2);
@@ -199,8 +194,8 @@ public class MainClass {
 						Path area3Path = getPath(cnAbp, "__area3.png");
 						
 						//получаем часть изображения с реквизитами
-						BufferedImage partOfBufferedImage3 = deepCopy(binaryBufferedImage.getSubimage(
-								requisitesArea.x, requisitesArea.y, requisitesArea.width, requisitesArea.height));
+						BufferedImage partOfBufferedImage3 = binaryBufferedImage.getSubimage(
+								requisitesArea.x, requisitesArea.y, requisitesArea.width, requisitesArea.height);
 						
 						String requisitesAreaText = tesseract.doOCR(partOfBufferedImage3);
 						requisitesAreaText = requisitesAreaText.toLowerCase();
@@ -269,12 +264,16 @@ public class MainClass {
 					
 					cnAbp.setSplitPdfFilePath(path.toFile().getAbsolutePath());
 					
+					resultDocument.close();
+					
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
 			consignmentNotesAbp.forEach(System.out::println);
+			
+			document.close();
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -286,13 +285,13 @@ public class MainClass {
 		return Paths.get(absPath + "output/" + consignmentNoteAfterBatchProcessing.getUuid() + name);
 	}
 	
-	/**Рисуем прямоугольник на переданном изображении*/
-	private static void areasMarkup(BufferedImage partOfBufferedImage, Rectangle coordInStandardStamp) {
-		Graphics2D g2d = partOfBufferedImage.createGraphics();
-		g2d.setColor(Color.BLACK);
-		g2d.drawRect(coordInStandardStamp.x,coordInStandardStamp.y, coordInStandardStamp.width, coordInStandardStamp.height);
-		g2d.dispose();
-	}
+//	/**Рисуем прямоугольник на переданном изображении*/
+//	private static void areasMarkup(BufferedImage partOfBufferedImage, Rectangle coordInStandardStamp) {
+//		Graphics2D g2d = partOfBufferedImage.createGraphics();
+//		g2d.setColor(Color.BLACK);
+//		g2d.drawRect(coordInStandardStamp.x,coordInStandardStamp.y, coordInStandardStamp.width, coordInStandardStamp.height);
+//		g2d.dispose();
+//	}
 	
 	/**Конвертируем цветное изображение в черно-белое. Так качество чуть лучше...*/
 	public static BufferedImage convertBufferedImageToBINARY(BufferedImage bufferedImage) {
@@ -309,13 +308,13 @@ public class MainClass {
 		return copyImage(srcImage, new BufferedImage(srcImage.getWidth(), srcImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY));
 	}
 	
-	/**Возвращает копию изображения*/
-	public static BufferedImage deepCopy(BufferedImage bi) {
-		ColorModel cm = bi.getColorModel();
-		boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
-		WritableRaster raster = bi.copyData(bi.getRaster().createCompatibleWritableRaster());
-		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
-	}
+//	/**Возвращает копию изображения*/
+//	public static BufferedImage deepCopy(BufferedImage bi) {
+//		ColorModel cm = bi.getColorModel();
+//		boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+//		WritableRaster raster = bi.copyData(bi.getRaster().createCompatibleWritableRaster());
+//		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+//	}
 	
 	/**Возвращает копию изображения*/
 	public static BufferedImage copyImage(BufferedImage srcImage, BufferedImage destImage) {

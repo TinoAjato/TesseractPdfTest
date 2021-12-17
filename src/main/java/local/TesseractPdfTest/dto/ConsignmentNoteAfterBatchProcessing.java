@@ -23,15 +23,6 @@ public class ConsignmentNoteAfterBatchProcessing {
 	private String consigneeName;
 	
 	/***/
-	private String area1Path;
-	
-	/***/
-	private String area2Path;
-	
-	/***/
-	private String area3Path;
-	
-	/***/
 	private String splitPdfFilePath;
 	
 	private int splitterStartPage = 0;
@@ -99,33 +90,6 @@ public class ConsignmentNoteAfterBatchProcessing {
 	}
 	
 	/**Возвращает */
-	public String getArea1Path() {
-		return area1Path;
-	}
-	/**Устанавливает */
-	public void setArea1Path(String area1Path) {
-		this.area1Path = area1Path;
-	}
-	
-	/**Возвращает */
-	public String getArea2Path() {
-		return area2Path;
-	}
-	/**Устанавливает */
-	public void setArea2Path(String area2Path) {
-		this.area2Path = area2Path;
-	}
-	
-	/**Возвращает */
-	public String getArea3Path() {
-		return area3Path;
-	}
-	/**Устанавливает */
-	public void setArea3Path(String area3Path) {
-		this.area3Path = area3Path;
-	}
-	
-	/**Возвращает */
 	public String getSplitPdfFilePath() {
 		return splitPdfFilePath;
 	}
@@ -178,9 +142,6 @@ public class ConsignmentNoteAfterBatchProcessing {
 				+ ", consigneeUPN=" + consigneeUPN
 				+ ", date=" + date
 				+ ", consigneeName=" + consigneeName
-				+ ", area1Path=" + area1Path
-				+ ", area2Path=" + area2Path
-				+ ", area3Path=" + area3Path
 				+ ", splitPdfFilePath=" + splitPdfFilePath
 				+ "]";
 	}
